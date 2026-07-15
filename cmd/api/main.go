@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -17,13 +18,16 @@ import (
 	"todolist/internal/usecase"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	db, err := database.NewPostgresPool(ctx, cfg.DatabaseURL())
 	if err != nil {
@@ -35,33 +39,42 @@ func main() {
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	userHandler := handler.NewUserHandler(userUsecase)
 
-	r := router.New(userHandler)
-
 	server := &http.Server{
 		Addr:              ":" + cfg.AppPort,
-		Handler:           r,
+		Handler:           router.New(userHandler),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
+	errCh := make(chan error, 1)
 	go func() {
 		log.Printf("server running on :%s", cfg.AppPort)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %v", err)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("shutting down server...")
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("server shutdown: %v", err)
+	select {
+	case <-ctx.Done():
+		log.Println("shutdown signal received")
+	case err := <-errCh:
+		log.Printf("server error: %v", err)
 	}
 
-	log.Println("server stopped")
+	stop()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	log.Println("shutting down HTTP server...")
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("http shutdown error: %v", err)
+		if closeErr := server.Close(); closeErr != nil {
+			log.Printf("http force close error: %v", closeErr)
+		}
+	}
+
+	log.Println("server stopped gracefully")
 }

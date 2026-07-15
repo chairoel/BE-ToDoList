@@ -9,7 +9,7 @@ GOOSE ?= $(shell command -v goose 2>/dev/null)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-create migrate-up migrate-down migrate-status migrate-reset migrate-version
+.PHONY: help db-up db-down migrate-create migrate-up migrate-down migrate-status migrate-reset migrate-version run build
 
 ## Show available make commands
 help:
@@ -78,3 +78,11 @@ ifneq ($(GOOSE),)
 else
 	GOOSE_COMMAND=version docker compose --profile tools run --rm goose
 endif
+
+## Run API server
+run:
+	go run ./cmd/api
+
+## Build API binary
+build:
+	go build -o bin/api ./cmd/api

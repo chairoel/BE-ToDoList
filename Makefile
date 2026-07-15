@@ -7,7 +7,19 @@ GOOSE_MIGRATION_DIR ?= ./migrations
 # Prefer local goose binary if installed, otherwise use Docker
 GOOSE ?= $(shell command -v goose 2>/dev/null)
 
-.PHONY: db-up db-down migrate-create migrate-up migrate-down migrate-status migrate-reset migrate-version
+.DEFAULT_GOAL := help
+
+.PHONY: help db-up db-down migrate-create migrate-up migrate-down migrate-status migrate-reset migrate-version
+
+## Show available make commands
+help:
+	@echo "Available commands:"
+	@awk '/^## / {desc=substr($$0,4); next} \
+		/^[a-zA-Z0-9_-]+:/ && desc { \
+			split($$1, parts, ":"); \
+			printf "  \033[36m%-18s\033[0m %s\n", parts[1], desc; \
+			desc=""; \
+		}' $(MAKEFILE_LIST)
 
 ## Start PostgreSQL
 db-up:

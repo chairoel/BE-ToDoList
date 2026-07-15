@@ -16,6 +16,8 @@ Backend API (Go + Gin + PostgreSQL) with a **handler → usecase → repository*
 8. [Project structure](#8-project-structure)
 9. [Troubleshooting](#9-troubleshooting)
 
+Users CRUD process flow (sequence diagrams): see [docs/PROCESS.md](docs/PROCESS.md).
+
 ---
 
 ## 1. Prerequisites

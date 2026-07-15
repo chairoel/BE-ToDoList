@@ -16,6 +16,8 @@ Backend API (Go + Gin + PostgreSQL) dengan arsitektur **handler → usecase → 
 8. [Struktur project](#8-struktur-project)
 9. [Troubleshooting](#9-troubleshooting)
 
+Alur proses CRUD Users (diagram sequence): lihat [docs/PROCESS.md](docs/PROCESS.md).
+
 ---
 
 ## 1. Prasyarat

@@ -9,7 +9,7 @@ GOOSE ?= $(shell command -v goose 2>/dev/null)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help db-up db-down migrate-create migrate-up migrate-down migrate-status migrate-reset migrate-version run build
+.PHONY: help db-up db-down migrate-create migrate-up migrate-down migrate-status migrate-reset migrate-version run build docker-build docker-up docker-down docker-logs docker-restart
 
 ## Show available make commands
 help:
@@ -25,7 +25,7 @@ help:
 db-up:
 	docker compose up -d postgres
 
-## Stop PostgreSQL
+## Stop all Docker services
 db-down:
 	docker compose down
 
@@ -79,10 +79,30 @@ else
 	GOOSE_COMMAND=version docker compose --profile tools run --rm goose
 endif
 
-## Run API server
+## Run API server locally
 run:
 	go run ./cmd/api
 
-## Build API binary
+## Build API binary locally
 build:
 	go build -o bin/api ./cmd/api
+
+## Build API Docker image
+docker-build:
+	docker compose build api
+
+## Build and start API + PostgreSQL
+docker-up:
+	docker compose up -d --build
+
+## Stop API + PostgreSQL
+docker-down:
+	docker compose down
+
+## Restart API container
+docker-restart:
+	docker compose up -d --build --force-recreate api
+
+## Follow API container logs
+docker-logs:
+	docker compose logs -f api
